@@ -1,9 +1,22 @@
 
+Method A (Recommended, Easiest)
+
+Open PyMOL
+
+Go to the menu:
+Plugin → Plugin Manager → Install New Plugin
+
+In the dialog window:
+
+Set Install from to URL
+
+Paste the GitHub raw file URL of the plugin
+```
 https://github.com/wqiudao/pymol-plugin/blob/main/plddt_coloring_plugin.py
+```
+Click Install
 
-
-
-
+Restart PyMOL (recommended)
 
 
 
