@@ -8,10 +8,10 @@
 #   color_plddt "chain A"
 #
 # Ranges (non-overlapping):
-#   b < 50            -> red
-#   50 <= b < 70      -> yellow
-#   70 <= b < 90      -> cyan
-#   b >= 90           -> blue
+#   b <= 50            -> red
+#   50 < b <= 70      -> yellow
+#   70 < b <= 90      -> cyan
+#   b > 90           -> blue
 #
 # Notes:
 # - Assumes pLDDT is stored in B-factor field (common in AlphaFold PDBs).
@@ -43,11 +43,21 @@ def color_plddt_by_ca(selection="all"):
     cmd.select("plddt_high_ca",     f"{sel} and name CA and b > 70.0  and  (b < 90.0 or b = 90.0)")
     cmd.select("plddt_veryhigh_ca", f"{sel} and name CA and b > 90.0")
 
+    # define custom colors
+    cmd.set_color("plddt_low",      [0xFF/255, 0x7E/255, 0x45/255])
+    cmd.set_color("plddt_mid",      [0xFF/255, 0xDB/255, 0x12/255])
+    cmd.set_color("plddt_high",     [0x57/255, 0xCA/255, 0xF9/255])
+    cmd.set_color("plddt_veryhigh", [0x00/255, 0x53/255, 0xD7/255])
+
+    
     # Color entire residues by CA membership
-    cmd.color("red",    "byres plddt_low_ca")
-    cmd.color("yellow", "byres plddt_mid_ca")
-    cmd.color("cyan",   "byres plddt_high_ca")
-    cmd.color("blue",   "byres plddt_veryhigh_ca")
+    cmd.color("plddt_low",      "byres plddt_low_ca")
+    cmd.color("plddt_mid",      "byres plddt_mid_ca")
+    cmd.color("plddt_high",     "byres plddt_high_ca")
+    cmd.color("plddt_veryhigh", "byres plddt_veryhigh_ca")
+    
+    cmd.set("cartoon_smooth_loops", 1)
+    cmd.set("cartoon_sampling", 14)
 
     # Print a quick summary
     n_low  = cmd.count_atoms("plddt_low_ca")
