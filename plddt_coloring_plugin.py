@@ -39,9 +39,9 @@ def color_plddt_by_ca(selection="all"):
 
     # Define bins based on CA atom B-factor (pLDDT)
     cmd.select("plddt_low_ca",      f"{sel} and name CA and b < 50.0")
-    cmd.select("plddt_mid_ca",      f"{sel} and name CA and b >= 50.0 and b < 70.0")
-    cmd.select("plddt_high_ca",     f"{sel} and name CA and b >= 70.0 and b < 90.0")
-    cmd.select("plddt_veryhigh_ca", f"{sel} and name CA and b >= 90.0")
+    cmd.select("plddt_mid_ca",      f"{sel} and name CA and (b > 50.0 or b = 50.0) and b < 70.0")
+    cmd.select("plddt_high_ca",     f"{sel} and name CA and (b > 70.0 or b = 70.0) and b < 90.0")
+    cmd.select("plddt_veryhigh_ca", f"{sel} and name CA and (b > 90.0 or b = 90.0)")
 
     # Color entire residues by CA membership
     cmd.color("red",    "byres plddt_low_ca")
