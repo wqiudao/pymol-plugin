@@ -19,52 +19,95 @@
 
 from pymol import cmd
 
-def color_plddt_by_ca(selection="all"):
+def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     """
-    Color residues by CA B-factor (pLDDT) within the given selection.
+    Color residues by CA B-factor (pLDDT) within the given selection,
+    and highlight catalytic CA atoms marked by occupancy (q).
 
     Parameters
     ----------
     selection : str
-        PyMOL selection string, e.g. "all", "myobj", "chain A", "polymer.protein".
+        PyMOL selection string, e.g. "all", "myobj", "chain A".
+    catalytic_q_cutoff : float
+        Occupancy (q) threshold to mark catalytic CA atoms.
+        Default: q > 9.0
     """
     sel = f"({selection})"
 
-    # Remove previous temp selections (safe if not present)
-    for s in ("plddt_low_ca", "plddt_mid_ca", "plddt_high_ca", "plddt_veryhigh_ca"):
+    # ----------------------------
+    # Clean old temp selections
+    # ----------------------------
+    for s in (
+        "plddt_low_ca",
+        "plddt_mid_ca",
+        "plddt_high_ca",
+        "plddt_veryhigh_ca",
+        "catalytic_ca",
+    ):
         try:
             cmd.delete(s)
         except Exception:
             pass
 
-    # Define bins based on CA atom B-factor (pLDDT)
-    cmd.select("plddt_low_ca",      f"{sel} and name CA and (b < 50.0 or b = 50.0)")
-    cmd.select("plddt_mid_ca",      f"{sel} and name CA and b > 50.0 and (b < 70.0 or b = 70.0)")
-    cmd.select("plddt_high_ca",     f"{sel} and name CA and b > 70.0  and  (b < 90.0 or b = 90.0)")
-    cmd.select("plddt_veryhigh_ca", f"{sel} and name CA and b > 90.0")
+    # ----------------------------
+    # pLDDT bins (CA-based)
+    # ----------------------------
+    cmd.select("plddt_low_ca",
+               f"{sel} and name CA and (b < 50.0 or b = 50.0)")
+    cmd.select("plddt_mid_ca",
+               f"{sel} and name CA and b > 50.0 and (b < 70.0 or b = 70.0)")
+    cmd.select("plddt_high_ca",
+               f"{sel} and name CA and b > 70.0 and (b < 90.0 or b = 90.0)")
+    cmd.select("plddt_veryhigh_ca",
+               f"{sel} and name CA and b > 90.0")
 
-    # define custom colors
+    # ----------------------------
+    # Define colors (AlphaFold style)
+    # ----------------------------
     cmd.set_color("plddt_low",      [0xFF/255, 0x7E/255, 0x45/255])
     cmd.set_color("plddt_mid",      [0xFF/255, 0xDB/255, 0x12/255])
     cmd.set_color("plddt_high",     [0x57/255, 0xCA/255, 0xF9/255])
     cmd.set_color("plddt_veryhigh", [0x00/255, 0x53/255, 0xD7/255])
 
-    
+    # ----------------------------
     # Color entire residues by CA membership
+    # ----------------------------
     cmd.color("plddt_low",      "byres plddt_low_ca")
     cmd.color("plddt_mid",      "byres plddt_mid_ca")
     cmd.color("plddt_high",     "byres plddt_high_ca")
     cmd.color("plddt_veryhigh", "byres plddt_veryhigh_ca")
-    
+
+    # Cartoon style tweaks
     cmd.set("cartoon_smooth_loops", 1)
     cmd.set("cartoon_sampling", 14)
 
-    # Print a quick summary
+    # ----------------------------
+    # Catalytic CA highlighting (occupancy = q)
+    # ----------------------------
+    cmd.select(
+        "catalytic_ca",
+        f"{sel} and name CA and q > {float(catalytic_q_cutoff)}"
+    )
+
+    if cmd.count_atoms("catalytic_ca") > 0:
+        cmd.show("spheres", "catalytic_ca")
+        cmd.set("sphere_scale", 0.35, "catalytic_ca")
+        cmd.color("red", "catalytic_ca")
+
+    # ----------------------------
+    # Summary
+    # ----------------------------
     n_low  = cmd.count_atoms("plddt_low_ca")
     n_mid  = cmd.count_atoms("plddt_mid_ca")
     n_high = cmd.count_atoms("plddt_high_ca")
     n_vhi  = cmd.count_atoms("plddt_veryhigh_ca")
-    print(f"[pLDDT] CA counts in '{selection}': <50={n_low}, 50-70={n_mid}, 70-90={n_high}, >=90={n_vhi}")
+    n_cat  = cmd.count_atoms("catalytic_ca")
+
+    print(
+        f"[pLDDT] CA counts in '{selection}': "
+        f"<50={n_low}, 50–70={n_mid}, 70–90={n_high}, >=90={n_vhi} | "
+        f"catalytic(q>{catalytic_q_cutoff})={n_cat}"
+    )
 
 # ---- Command wrapper: allow calling without args (defaults to 'all')
 def color_plddt(selection="all"):
