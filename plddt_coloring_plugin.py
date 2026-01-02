@@ -100,7 +100,7 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         # NEW: Surface patch (方式 2)
         # ----------------------------
         # Whole residues containing catalytic CA
-        cmd.select("catalytic_res", "byres catalytic_ca")
+        cmd.select("catalytic_res", "byres catalytic_ca expand 5")
 
         # Create a separate object for the patch
         cmd.create("catalytic_patch", "catalytic_res")
