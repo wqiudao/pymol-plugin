@@ -101,18 +101,15 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         # ----------------------------
         # Whole residues containing catalytic CA
         cmd.select("catalytic_res", "byres catalytic_ca expand 5")
-
-        # Create a separate object for the patch
         cmd.create("catalytic_patch", "catalytic_res")
-
-        # Show patch as surface and force a distinct color
+        
         cmd.show("surface", "catalytic_patch")
         cmd.color("yellow", "catalytic_patch")
-
-        # Optional: nicer patch rendering (safe defaults)
+        
         cmd.set("surface_mode", 1, "catalytic_patch")
-        cmd.set("surface_quality", 1, "catalytic_patch")
+        cmd.set("surface_quality", 2, "catalytic_patch")
         cmd.set("transparency", 0.0, "catalytic_patch")
+
 
     # ----------------------------
     # Summary
