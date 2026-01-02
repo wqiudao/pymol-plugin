@@ -42,8 +42,9 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         "plddt_high_ca",
         "plddt_veryhigh_ca",
         "catalytic_ca",
-        "catalytic_patch",   # NEW: surface patch object
-        "catalytic_res",     # NEW: helper selection
+        # NEW (surface patch helpers)
+        "catalytic_res",
+        "catalytic_patch",
     ):
         try:
             cmd.delete(s)
@@ -91,25 +92,43 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     )
 
     if cmd.count_atoms("catalytic_ca") > 0:
-        # Keep your original spheres highlight
         cmd.show("spheres", "catalytic_ca")
         cmd.set("sphere_scale", 1, "catalytic_ca")
         cmd.color("red", "catalytic_ca")
 
-        # ----------------------------
-        # NEW: Surface patch (方式 2)
-        # ----------------------------
-        # Whole residues containing catalytic CA
-        cmd.select("catalytic_res", "byres catalytic_ca expand 5")
+    # ======================================================================
+    # NEW PART (only add, do not modify existing behavior)
+    # ======================================================================
+
+    # ----------------------------
+    # 1) Local electrostatic surface (PyMOL built-in)
+    # ----------------------------
+    # Show surface and color by electrostatics (Coulombic approximation)
+    cmd.show("surface", sel)
+    cmd.set("surface_quality", 1, sel)
+    cmd.set("surface_color", "electrostatic", sel)
+
+    # Slight transparency so patches are visible
+    cmd.set("surface_transparency", 0.15, sel)
+
+    # ----------------------------
+    # 2) Catalytic surface patch (yellow,凸显)
+    # ----------------------------
+    if cmd.count_atoms("catalytic_ca") > 0:
+        # Take whole residues containing catalytic CA
+        cmd.select("catalytic_res", "byres catalytic_ca")
+
+        # Create an independent surface patch object
         cmd.create("catalytic_patch", "catalytic_res")
-        
+
+        # Show patch as surface and force color (override electrostatics)
         cmd.show("surface", "catalytic_patch")
         cmd.color("yellow", "catalytic_patch")
-        
-        cmd.set("surface_mode", 1, "catalytic_patch")
-        cmd.set("surface_quality", 2, "catalytic_patch")
-        cmd.set("transparency", 0.0, "catalytic_patch")
 
+        # Make the patch stand out
+        cmd.set("surface_mode", 1, "catalytic_patch")
+        cmd.set("surface_quality", 1, "catalytic_patch")
+        cmd.set("transparency", 0.0, "catalytic_patch")
 
     # ----------------------------
     # Summary
