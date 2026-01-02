@@ -16,7 +16,6 @@
 # Notes:
 # - Assumes pLDDT is stored in B-factor field (common in AlphaFold PDBs).
 # - Uses CA atoms to decide residue bin, then colors whole residue (byres).
-
 from pymol import cmd
 
 def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
@@ -43,6 +42,8 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         "plddt_high_ca",
         "plddt_veryhigh_ca",
         "catalytic_ca",
+        "catalytic_patch",   # NEW: surface patch object
+        "catalytic_res",     # NEW: helper selection
     ):
         try:
             cmd.delete(s)
@@ -90,9 +91,28 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     )
 
     if cmd.count_atoms("catalytic_ca") > 0:
+        # Keep your original spheres highlight
         cmd.show("spheres", "catalytic_ca")
         cmd.set("sphere_scale", 1, "catalytic_ca")
         cmd.color("red", "catalytic_ca")
+
+        # ----------------------------
+        # NEW: Surface patch (方式 2)
+        # ----------------------------
+        # Whole residues containing catalytic CA
+        cmd.select("catalytic_res", "byres catalytic_ca")
+
+        # Create a separate object for the patch
+        cmd.create("catalytic_patch", "catalytic_res")
+
+        # Show patch as surface and force a distinct color
+        cmd.show("surface", "catalytic_patch")
+        cmd.color("yellow", "catalytic_patch")
+
+        # Optional: nicer patch rendering (safe defaults)
+        cmd.set("surface_mode", 1, "catalytic_patch")
+        cmd.set("surface_quality", 1, "catalytic_patch")
+        cmd.set("transparency", 0.0, "catalytic_patch")
 
     # ----------------------------
     # Summary
