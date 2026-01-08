@@ -89,11 +89,25 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         f"{sel} and name CA and q > {float(catalytic_q_cutoff)}"
     )
 
-    if cmd.count_atoms("catalytic_ca") > 0:
-        cmd.show("spheres", "catalytic_ca")
-        cmd.set("sphere_scale", 1, "catalytic_ca")
-        cmd.color("red", "catalytic_ca")
+  #  if cmd.count_atoms("catalytic_ca") > 0:
+  #      cmd.show("spheres", "catalytic_ca")
+  #      cmd.set("sphere_scale", 1, "catalytic_ca")
+  #      cmd.color("red", "catalytic_ca")
 
+
+    if cmd.count_atoms("catalytic_ca") > 0:
+        # Use gold/yellow to stand out on electrostatic (red-white-blue) surfaces
+        cmd.show("spheres", "catalytic_ca")
+        cmd.show("sticks", "catalytic_ca")
+
+        # Slightly enlarge spheres for visibility through surface
+        cmd.set("sphere_scale", 0.45, "catalytic_ca")
+        cmd.set("stick_radius", 0.25, "catalytic_ca")
+
+        # Journal-safe catalytic color
+        cmd.color("gold", "catalytic_ca")
+
+    
     # ----------------------------
     # Summary
     # ----------------------------
