@@ -90,9 +90,11 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     )
 
     if cmd.count_atoms("catalytic_ca") > 0:
+        cmd.set_color("catalytic_red", [0.95, 0.05, 0.05])
         cmd.show("spheres", "catalytic_ca")
         cmd.set("sphere_scale", 1, "catalytic_ca")
-        cmd.color("red", "catalytic_ca")
+        cmd.color("catalytic_red", "catalytic_ca")
+        cmd.set("depth_cue", 0)
 
 
     
