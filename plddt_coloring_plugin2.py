@@ -195,16 +195,15 @@ cmd.extend("color_occ", color_by_occ)
 # ============================================================
 
 def __init_plugin__(app=None):
-    try:
-        color_plddt()
-        print("[pLDDT] Auto coloring applied (default selection: all).")
-    except Exception as e:
-        print(f"[pLDDT] Auto coloring failed: {e}")
+	try:
+		color_plddt()
+		print("[pLDDT] Auto coloring applied (default selection: all).")
+	except Exception as e:
+		print(f"[pLDDT] Auto coloring failed: {e}")
 
-    try:
-        from pymol.plugins import addmenuitemqt
-        addmenuitemqt("pLDDT Coloring (reapply)", lambda: color_plddt("all"))
-        addmenuitemqt("OCC Coloring (reapply)",   lambda: color_by_occ("all"))
-    except Exception:
-        pass
-        
+	try:
+		from pymol.plugins import addmenuitemqt
+		addmenuitemqt("pLDDT Coloring (reapply)", lambda: color_plddt("all"))
+		addmenuitemqt("OCC Coloring (reapply)",   lambda: color_by_occ("all"))
+	except Exception:
+		pass
