@@ -127,15 +127,9 @@ cmd.extend("color_plddt", color_plddt)
 
 
 
-# ============================================================
-# Shared utility
-# ============================================================
-
 def hex_to_rgb(hex_color: str):
     hex_color = hex_color.lstrip("#")
     return [int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4)]
-
-
 
 
 
