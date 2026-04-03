@@ -1,28 +1,54 @@
 # plddt_coloring_plugin.py
-# PyMOL plugin/command: color residues by pLDDT stored in B-factor on CA atoms
+# PyMOL plugin with two coloring commands:
 #
-# Usage in PyMOL:
-#   run plddt_coloring_plugin.py
-#   color_plddt                 # default == color_plddt all
-#   color_plddt myobj
-#   color_plddt "chain A"
+#   color_plddt [selection]
+#     Color residues by CA B-factor (pLDDT, AlphaFold style)
+#     b <= 50           -> #FF7E45 (orange)
+#     50 < b <= 70      -> #FFDB12 (yellow)
+#     70 < b <= 90      -> #57CAF9 (cyan)
+#     b > 90            -> #0053D7 (blue)
+#     q > 9.0 (catalytic) -> red (color only, no sphere)
 #
-# Ranges (non-overlapping):
-#   b <= 50            -> red
-#   50 < b <= 70      -> yellow
-#   70 < b <= 90      -> cyan
-#   b > 90           -> blue
-#
-# Notes:
-# - Assumes pLDDT is stored in B-factor field (common in AlphaFold PDBs).
-# - Uses CA atoms to decide residue bin, then colors whole residue (byres).
+#   color_occ [selection]
+#     Color residues by CA occupancy (q), color only, no sphere
+#     q == 8.99         -> red
+#     q = 1,10,19,...   -> #FF7E45
+#     q = 2,11,20,...   -> #FFDB12
+#     q = 3,12,21,...   -> #57CAF9
+#     q = 4,13,22,...   -> #0053D7
+#     q = 5,14,23,...   -> #4CAF50
+#     q = 6,15,24,...   -> #9B59B6
+#     q = 7,16,25,...   -> #00BFA5
+#     q = 8,17,26,...   -> #795548
+#     q = 9,18,27,...   -> #d9d9d9
+#     (cycles every 9)
 
 from pymol import cmd
+
+
+# ============================================================
+# Shared utility
+# ============================================================
+
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip("#")
+    return [int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4)]
+
+CYCLE_COLORS = [
+    "#FF7E45", "#FFDB12", "#57CAF9", "#0053D7",
+    "#4CAF50", "#9B59B6", "#00BFA5", "#795548", "#d9d9d9"
+]
+CYCLE_COLOR_NAMES = ["occ_c{}".format(i) for i in range(9)]
+
+
+# ============================================================
+# Command 1: color_plddt  (original logic, spheres removed)
+# ============================================================
 
 def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     """
     Color residues by CA B-factor (pLDDT) within the given selection,
-    and highlight catalytic CA atoms marked by occupancy (q).
+    and highlight catalytic CA atoms marked by occupancy (q) with color only.
 
     Parameters
     ----------
@@ -32,208 +58,163 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         Occupancy (q) threshold to mark catalytic CA atoms.
         Default: q > 9.0
     """
-    sel = f"({selection})"
+    sel = "({})".format(selection)
 
-    # ----------------------------
-    # Clean old temp selections
-    # ----------------------------
     for s in (
-        "plddt_low_ca",
-        "plddt_mid_ca",
-        "plddt_high_ca",
-        "plddt_veryhigh_ca",
-        "catalytic_ca",
+        "plddt_low_ca", "plddt_mid_ca",
+        "plddt_high_ca", "plddt_veryhigh_ca", "catalytic_ca",
     ):
         try:
             cmd.delete(s)
         except Exception:
             pass
 
-    # ----------------------------
-    # pLDDT bins (CA-based)
-    # ----------------------------
     cmd.select("plddt_low_ca",
-               f"{sel} and name CA and (b < 50.0 or b = 50.0)")
+               "{} and name CA and (b < 50.0 or b = 50.0)".format(sel))
     cmd.select("plddt_mid_ca",
-               f"{sel} and name CA and b > 50.0 and (b < 70.0 or b = 70.0)")
+               "{} and name CA and b > 50.0 and (b < 70.0 or b = 70.0)".format(sel))
     cmd.select("plddt_high_ca",
-               f"{sel} and name CA and b > 70.0 and (b < 90.0 or b = 90.0)")
+               "{} and name CA and b > 70.0 and (b < 90.0 or b = 90.0)".format(sel))
     cmd.select("plddt_veryhigh_ca",
-               f"{sel} and name CA and b > 90.0")
+               "{} and name CA and b > 90.0".format(sel))
 
-    # ----------------------------
-    # Define colors (AlphaFold style)
-    # ----------------------------
-    cmd.set_color("plddt_low",      [0xFF/255, 0x7E/255, 0x45/255])
-    cmd.set_color("plddt_mid",      [0xFF/255, 0xDB/255, 0x12/255])
-    cmd.set_color("plddt_high",     [0x57/255, 0xCA/255, 0xF9/255])
-    cmd.set_color("plddt_veryhigh", [0x00/255, 0x53/255, 0xD7/255])
+    cmd.set_color("plddt_low",      hex_to_rgb("#FF7E45"))
+    cmd.set_color("plddt_mid",      hex_to_rgb("#FFDB12"))
+    cmd.set_color("plddt_high",     hex_to_rgb("#57CAF9"))
+    cmd.set_color("plddt_veryhigh", hex_to_rgb("#0053D7"))
 
-    # ----------------------------
-    # Color entire residues by CA membership
-    # ----------------------------
     cmd.color("plddt_low",      "byres plddt_low_ca")
     cmd.color("plddt_mid",      "byres plddt_mid_ca")
     cmd.color("plddt_high",     "byres plddt_high_ca")
     cmd.color("plddt_veryhigh", "byres plddt_veryhigh_ca")
 
-    # Cartoon style tweaks
     cmd.set("cartoon_smooth_loops", 1)
     cmd.set("cartoon_sampling", 14)
 
-    # ----------------------------
-    # Catalytic CA highlighting (occupancy = q)
-    # ----------------------------
     cmd.select(
         "catalytic_ca",
-        f"{sel} and name CA and q > {float(catalytic_q_cutoff)}"
+        "{} and name CA and q > {}".format(sel, float(catalytic_q_cutoff))
     )
-
     if cmd.count_atoms("catalytic_ca") > 0:
         cmd.set_color("catalytic_red", [0.95, 0.05, 0.05])
-        cmd.show("spheres", "catalytic_ca")
-        cmd.set("sphere_scale", 1, "catalytic_ca")
-        cmd.color("catalytic_red", "catalytic_ca")
-        cmd.set("depth_cue", 0)
+        cmd.color("catalytic_red", "byres catalytic_ca")
 
-
-    
-    # ----------------------------
-    # Summary
-    # ----------------------------
     n_low  = cmd.count_atoms("plddt_low_ca")
     n_mid  = cmd.count_atoms("plddt_mid_ca")
     n_high = cmd.count_atoms("plddt_high_ca")
     n_vhi  = cmd.count_atoms("plddt_veryhigh_ca")
     n_cat  = cmd.count_atoms("catalytic_ca")
-
     print(
-        f"[pLDDT] CA counts in '{selection}': "
-        f"<50={n_low}, 50–70={n_mid}, 70–90={n_high}, >=90={n_vhi} | "
-        f"catalytic(q>{catalytic_q_cutoff})={n_cat}"
+        "[pLDDT] CA counts in '{}': "
+        "<50={}, 50-70={}, 70-90={}, >=90={} | "
+        "catalytic(q>{})={}".format(
+            selection, n_low, n_mid, n_high, n_vhi, catalytic_q_cutoff, n_cat
+        )
     )
 
-# ---- Command wrapper: allow calling without args (defaults to 'all')
+
 def color_plddt(selection="all"):
-    """
-    PyMOL command entry: color_plddt [selection]
-    If no selection is provided, defaults to 'all'.
-    """
+    """PyMOL command: color_plddt [selection]"""
     return color_plddt_by_ca(selection)
 
-# Register command
+
 cmd.extend("color_plddt", color_plddt)
 
 
-
-
-
-
-
-
 # ============================================================
-# Command 2: color_occ  (new)
+# Command 2: color_occ  (9-color cycle + red for 8.99)
 # ============================================================
 
 def color_by_occ(selection="all"):
     """
-    Color residues by CA occupancy (q) within the given selection.
+    Color residues by CA occupancy (q), color only, no sphere.
 
-    Coloring rules:
-      q == 8.99        -> pink  (special marked residues)
-      q odd integer    -> #d9d9d9 (light gray)
-      q even integer   -> #E8E8E8 (lighter gray, alternating)
+    Coloring rules (9-color cycle, (val-1) % 9):
+      q = 1,10,19,...  -> #FF7E45
+      q = 2,11,20,...  -> #FFDB12
+      q = 3,12,21,...  -> #57CAF9
+      q = 4,13,22,...  -> #0053D7
+      q = 5,14,23,...  -> #4CAF50
+      q = 6,15,24,...  -> #9B59B6
+      q = 7,16,25,...  -> #00BFA5
+      q = 8,17,26,...  -> #795548
+      q = 9,18,27,...  -> #d9d9d9
+      q == 8.99        -> red (applied last, highest priority)
 
     Parameters
     ----------
     selection : str
         PyMOL selection string, e.g. "all", "myobj", "chain A".
     """
-    sel = f"({selection})"
+    sel = "({})".format(selection)
 
-    # Clean old temp selections
-    for s in ("occ_special_ca", "occ_odd_ca", "occ_even_ca"):
+    old_sels = ["occ_special_ca"] + ["occ_cycle_{}_ca".format(i) for i in range(9)]
+    for s in old_sels:
         try:
             cmd.delete(s)
         except Exception:
             pass
 
-    # Define colors
-    cmd.set_color("occ_pink",     hex_to_rgb("#FF9EB5"))
-    cmd.set_color("occ_gray_odd", hex_to_rgb("#d9d9d9"))
-    cmd.set_color("occ_gray_eve", hex_to_rgb("#E8E8E8"))
+    # Register colors
+    cmd.set_color("occ_red", [0.95, 0.05, 0.05])
+    for i, hex_col in enumerate(CYCLE_COLORS):
+        cmd.set_color(CYCLE_COLOR_NAMES[i], hex_to_rgb(hex_col))
 
-    # 8.99 special (use float range to avoid precision issues)
+    # 8.99 special
     cmd.select("occ_special_ca",
-               f"{sel} and name CA and q > 8.98 and q < 9.0")
+               "{} and name CA and q > 8.98 and q < 9.0".format(sel))
 
-    # Odd/even: enumerate 1~19 (extend if needed)
-    odd_vals  = list(range(1, 20, 2))
-    even_vals = list(range(2, 20, 2))
+    # 9-color cycle: integers 1~54 (covers 6 full cycles), grouped by (val-1) % 9
+    max_occ = 54
+    for ci in range(9):
+        vals = [v for v in range(1, max_occ + 1) if (v - 1) % 9 == ci]
+        expr = " or ".join(
+            "(q > {} and q < {})".format(v - 0.01, v + 0.01) for v in vals
+        )
+        cmd.select(
+            "occ_cycle_{}_ca".format(ci),
+            "{} and name CA and ({})".format(sel, expr)
+        )
 
-    odd_expr  = " or ".join(
-        f"(q > {v - 0.01} and q < {v + 0.01})" for v in odd_vals
-    )
-    even_expr = " or ".join(
-        f"(q > {v - 0.01} and q < {v + 0.01})" for v in even_vals
-    )
-
-    cmd.select("occ_odd_ca",  f"{sel} and name CA and ({odd_expr})")
-    cmd.select("occ_even_ca", f"{sel} and name CA and ({even_expr})")
-
-    # Color entire residues by CA membership
-    cmd.color("occ_gray_odd", "byres occ_odd_ca")
-    cmd.color("occ_gray_eve", "byres occ_even_ca")
-
-    # Pink special: color byres + show sphere on CA
-    if cmd.count_atoms("occ_special_ca") > 0:
-        cmd.color("occ_pink", "byres occ_special_ca")
-        cmd.show("spheres", "occ_special_ca")
-        cmd.set("sphere_scale", 1, "occ_special_ca")
-        cmd.set("depth_cue", 0)
+    # Color by residue: cycle colors first, then red last (wins)
+    for ci in range(9):
+        cmd.color(CYCLE_COLOR_NAMES[ci], "byres occ_cycle_{}_ca".format(ci))
+    cmd.color("occ_red", "byres occ_special_ca")
 
     cmd.set("cartoon_smooth_loops", 1)
     cmd.set("cartoon_sampling", 14)
 
-    # Summary
-    n_odd  = cmd.count_atoms("occ_odd_ca")
-    n_eve  = cmd.count_atoms("occ_even_ca")
     n_spec = cmd.count_atoms("occ_special_ca")
+    counts = [cmd.count_atoms("occ_cycle_{}_ca".format(i)) for i in range(9)]
     print(
-        f"[OCC] CA counts in '{selection}': "
-        f"odd_gray={n_odd}, even_gray={n_eve}, pink(8.99)={n_spec}"
+        "[OCC] CA counts in '{}': "
+        "c0={}, c1={}, c2={}, c3={}, c4={}, c5={}, c6={}, c7={}, c8={} | "
+        "red(8.99)={}".format(
+            selection,
+            counts[0], counts[1], counts[2], counts[3], counts[4],
+            counts[5], counts[6], counts[7], counts[8],
+            n_spec
+        )
     )
 
 
 cmd.extend("color_occ", color_by_occ)
 
 
-
-
- 
-
-
-
-
+# ============================================================
+# Plugin entry point
+# ============================================================
 
 def __init_plugin__(app=None):
-    """
-    Plugin entry point. Adds a menu item and (optionally) auto-applies coloring.
-
-    - Menu: Plugin -> pLDDT Coloring (reapply) -> recolor all
-    - Auto-color on plugin load: enabled below
-    """
-    # Optional: auto-apply on plugin load (keeps your manual command too)
     try:
-        color_plddt()  # defaults to "all"
+        color_plddt()
         print("[pLDDT] Auto coloring applied (default selection: all).")
     except Exception as e:
-        print(f"[pLDDT] Auto coloring failed: {e}")
+        print("[pLDDT] Auto coloring failed: {}".format(e))
 
-    # Add a menu item for quick re-apply
     try:
         from pymol.plugins import addmenuitemqt
         addmenuitemqt("pLDDT Coloring (reapply)", lambda: color_plddt("all"))
+        addmenuitemqt("OCC Coloring (reapply)",   lambda: color_by_occ("all"))
     except Exception:
-        # Older builds may not support Qt menu helper; command still works.
         pass
