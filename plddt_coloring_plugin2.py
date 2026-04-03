@@ -1,35 +1,23 @@
 # plddt_coloring_plugin.py
-# PyMOL plugin with two coloring commands:
+# PyMOL plugin/command: color residues by pLDDT stored in B-factor on CA atoms
 #
-#   color_plddt [selection]
-#     Color residues by CA B-factor (pLDDT, AlphaFold style)
-#     b <= 50           -> orange
-#     50 < b <= 70      -> yellow
-#     70 < b <= 90      -> cyan
-#     b > 90            -> blue
-#     q > 9.0 (catalytic) -> red sphere
+# Usage in PyMOL:
+#   run plddt_coloring_plugin.py
+#   color_plddt                 # default == color_plddt all
+#   color_plddt myobj
+#   color_plddt "chain A"
 #
-#   color_occ [selection]
-#     Color residues by CA occupancy (q)
-#     q == 8.99         -> pink
-#     q odd integer     -> #d9d9d9
-#     q even integer    -> #E8E8E8
+# Ranges (non-overlapping):
+#   b <= 50            -> red
+#   50 < b <= 70      -> yellow
+#   70 < b <= 90      -> cyan
+#   b > 90           -> blue
+#
+# Notes:
+# - Assumes pLDDT is stored in B-factor field (common in AlphaFold PDBs).
+# - Uses CA atoms to decide residue bin, then colors whole residue (byres).
 
 from pymol import cmd
-
-
-# ============================================================
-# Shared utility
-# ============================================================
-
-def hex_to_rgb(hex_color: str):
-    hex_color = hex_color.lstrip("#")
-    return [int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4)]
-
-
-# ============================================================
-# Command 1: color_plddt  (original, unchanged)
-# ============================================================
 
 def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     """
@@ -46,17 +34,24 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     """
     sel = f"({selection})"
 
+    # ----------------------------
     # Clean old temp selections
+    # ----------------------------
     for s in (
-        "plddt_low_ca", "plddt_mid_ca",
-        "plddt_high_ca", "plddt_veryhigh_ca", "catalytic_ca",
+        "plddt_low_ca",
+        "plddt_mid_ca",
+        "plddt_high_ca",
+        "plddt_veryhigh_ca",
+        "catalytic_ca",
     ):
         try:
             cmd.delete(s)
         except Exception:
             pass
 
+    # ----------------------------
     # pLDDT bins (CA-based)
+    # ----------------------------
     cmd.select("plddt_low_ca",
                f"{sel} and name CA and (b < 50.0 or b = 50.0)")
     cmd.select("plddt_mid_ca",
@@ -66,25 +61,34 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
     cmd.select("plddt_veryhigh_ca",
                f"{sel} and name CA and b > 90.0")
 
-    # AlphaFold colors
+    # ----------------------------
+    # Define colors (AlphaFold style)
+    # ----------------------------
     cmd.set_color("plddt_low",      [0xFF/255, 0x7E/255, 0x45/255])
     cmd.set_color("plddt_mid",      [0xFF/255, 0xDB/255, 0x12/255])
     cmd.set_color("plddt_high",     [0x57/255, 0xCA/255, 0xF9/255])
     cmd.set_color("plddt_veryhigh", [0x00/255, 0x53/255, 0xD7/255])
 
+    # ----------------------------
+    # Color entire residues by CA membership
+    # ----------------------------
     cmd.color("plddt_low",      "byres plddt_low_ca")
     cmd.color("plddt_mid",      "byres plddt_mid_ca")
     cmd.color("plddt_high",     "byres plddt_high_ca")
     cmd.color("plddt_veryhigh", "byres plddt_veryhigh_ca")
 
+    # Cartoon style tweaks
     cmd.set("cartoon_smooth_loops", 1)
     cmd.set("cartoon_sampling", 14)
 
-    # Catalytic CA highlighting
+    # ----------------------------
+    # Catalytic CA highlighting (occupancy = q)
+    # ----------------------------
     cmd.select(
         "catalytic_ca",
         f"{sel} and name CA and q > {float(catalytic_q_cutoff)}"
     )
+
     if cmd.count_atoms("catalytic_ca") > 0:
         cmd.set_color("catalytic_red", [0.95, 0.05, 0.05])
         cmd.show("spheres", "catalytic_ca")
@@ -92,25 +96,39 @@ def color_plddt_by_ca(selection="all", catalytic_q_cutoff=9.0):
         cmd.color("catalytic_red", "catalytic_ca")
         cmd.set("depth_cue", 0)
 
+
+    
+    # ----------------------------
     # Summary
-    n_low = cmd.count_atoms("plddt_low_ca")
-    n_mid = cmd.count_atoms("plddt_mid_ca")
+    # ----------------------------
+    n_low  = cmd.count_atoms("plddt_low_ca")
+    n_mid  = cmd.count_atoms("plddt_mid_ca")
     n_high = cmd.count_atoms("plddt_high_ca")
-    n_vhi = cmd.count_atoms("plddt_veryhigh_ca")
-    n_cat = cmd.count_atoms("catalytic_ca")
+    n_vhi  = cmd.count_atoms("plddt_veryhigh_ca")
+    n_cat  = cmd.count_atoms("catalytic_ca")
+
     print(
         f"[pLDDT] CA counts in '{selection}': "
-        f"<50={n_low}, 50-70={n_mid}, 70-90={n_high}, >=90={n_vhi} | "
+        f"<50={n_low}, 50–70={n_mid}, 70–90={n_high}, >=90={n_vhi} | "
         f"catalytic(q>{catalytic_q_cutoff})={n_cat}"
     )
 
-
+# ---- Command wrapper: allow calling without args (defaults to 'all')
 def color_plddt(selection="all"):
-    """PyMOL command: color_plddt [selection]"""
+    """
+    PyMOL command entry: color_plddt [selection]
+    If no selection is provided, defaults to 'all'.
+    """
     return color_plddt_by_ca(selection)
 
-
+# Register command
 cmd.extend("color_plddt", color_plddt)
+
+
+
+
+
+
 
 
 # ============================================================
@@ -190,20 +208,32 @@ def color_by_occ(selection="all"):
 cmd.extend("color_occ", color_by_occ)
 
 
-# ============================================================
-# Plugin entry point
-# ============================================================
+
+
+ 
+
+
+
+
 
 def __init_plugin__(app=None):
-	try:
-		color_plddt()
-		print("[pLDDT] Auto coloring applied (default selection: all).")
-	except Exception as e:
-		print(f"[pLDDT] Auto coloring failed: {e}")
+    """
+    Plugin entry point. Adds a menu item and (optionally) auto-applies coloring.
 
-	try:
-		from pymol.plugins import addmenuitemqt
-		addmenuitemqt("pLDDT Coloring (reapply)", lambda: color_plddt("all"))
-		addmenuitemqt("OCC Coloring (reapply)",   lambda: color_by_occ("all"))
-	except Exception:
-		pass
+    - Menu: Plugin -> pLDDT Coloring (reapply) -> recolor all
+    - Auto-color on plugin load: enabled below
+    """
+    # Optional: auto-apply on plugin load (keeps your manual command too)
+    try:
+        color_plddt()  # defaults to "all"
+        print("[pLDDT] Auto coloring applied (default selection: all).")
+    except Exception as e:
+        print(f"[pLDDT] Auto coloring failed: {e}")
+
+    # Add a menu item for quick re-apply
+    try:
+        from pymol.plugins import addmenuitemqt
+        addmenuitemqt("pLDDT Coloring (reapply)", lambda: color_plddt("all"))
+    except Exception:
+        # Older builds may not support Qt menu helper; command still works.
+        pass
