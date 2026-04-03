@@ -207,15 +207,4 @@ def __init_plugin__(app=None):
         addmenuitemqt("OCC Coloring (reapply)",   lambda: color_by_occ("all"))
     except Exception:
         pass
-```
-
-两个命令的使用方式：
-```
-# 在 PyMOL 中
-run plddt_coloring_plugin.py
-
-color_plddt          # B-factor pLDDT 配色
-color_plddt chain A
-
-color_occ            # occupancy 配色
-color_occ chain A
+        
