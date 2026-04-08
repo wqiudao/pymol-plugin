@@ -127,7 +127,7 @@ cmd.extend("color_plddt", color_plddt)
 # Command 2: color_occ  (9-color cycle + red for 8.99)
 # ============================================================
 
-def color_by_occ(selection="all"):
+def color_by_occ0(selection="all"):
     """
     Color residues by CA occupancy (q), color only, no sphere.
 
@@ -198,6 +198,96 @@ def color_by_occ(selection="all"):
             n_spec
         )
     )
+
+
+
+        
+def color_by_occ(selection="all", catalytic_residues=""):
+    """
+    Color residues by CA occupancy (q), color only, no sphere.
+    Optionally mark catalytic residues with red spheres.
+
+    Parameters
+    ----------
+    selection : str
+        PyMOL selection string, e.g. "all", "myobj", "chain A".
+    catalytic_residues : str
+        Comma-separated residue numbers to mark as catalytic, e.g. "42,105,300".
+        If empty, no catalytic spheres are drawn.
+    """
+    sel = "({})".format(selection)
+
+    old_sels = ["occ_special_ca", "catalytic"] + ["occ_cycle_{}_ca".format(i) for i in range(9)]
+    for s in old_sels:
+        try:
+            cmd.delete(s)
+        except Exception:
+            pass
+
+    # Register colors
+    cmd.set_color("occ_red", [0.95, 0.05, 0.05])
+    for i, hex_col in enumerate(CYCLE_COLORS):
+        cmd.set_color(CYCLE_COLOR_NAMES[i], hex_to_rgb(hex_col))
+
+    # 8.99 special
+    cmd.select("occ_special_ca",
+               "{} and name CA and q > 8.98 and q < 9.0".format(sel))
+
+    # 9-color cycle
+    max_occ = 54
+    for ci in range(9):
+        vals = [v for v in range(1, max_occ + 1) if (v - 1) % 9 == ci]
+        expr = " or ".join(
+            "(q > {} and q < {})".format(v - 0.01, v + 0.01) for v in vals
+        )
+        cmd.select(
+            "occ_cycle_{}_ca".format(ci),
+            "{} and name CA and ({})".format(sel, expr)
+        )
+
+    # Color by residue: cycle colors first, then red last (wins)
+    for ci in range(9):
+        cmd.color(CYCLE_COLOR_NAMES[ci], "byres occ_cycle_{}_ca".format(ci))
+    cmd.color("occ_red", "byres occ_special_ca")
+
+    cmd.set("cartoon_smooth_loops", 1)
+    cmd.set("cartoon_sampling", 14)
+
+    # ── Catalytic residues: red spheres ──────────────────────────
+    res_list = [r.strip() for r in catalytic_residues.split(",") if r.strip()]
+    if res_list:
+        resi_expr = "+".join(res_list)          # e.g. "42+105+300"
+        cmd.select(
+            "catalytic",
+            "{} and name CA and resi {}".format(sel, resi_expr)
+        )
+        n_cat = cmd.count_atoms("catalytic")
+        if n_cat > 0:
+            cmd.show("spheres", "catalytic")
+            cmd.set("sphere_scale", 1)
+            cmd.set("sphere_transparency", 0.0, "catalytic")
+            cmd.color("red", "catalytic")
+            print("[OCC] Catalytic CA spheres: {} atom(s) at resi {}".format(
+                n_cat, resi_expr))
+        else:
+            print("[OCC] Warning: no CA atoms found for catalytic resi {}".format(
+                resi_expr))
+    # ─────────────────────────────────────────────────────────────
+
+    n_spec = cmd.count_atoms("occ_special_ca")
+    counts = [cmd.count_atoms("occ_cycle_{}_ca".format(i)) for i in range(9)]
+    print(
+        "[OCC] CA counts in '{}': "
+        "c0={}, c1={}, c2={}, c3={}, c4={}, c5={}, c6={}, c7={}, c8={} | "
+        "red(8.99)={}".format(
+            selection,
+            counts[0], counts[1], counts[2], counts[3], counts[4],
+            counts[5], counts[6], counts[7], counts[8],
+            n_spec
+        )
+    )
+
+
 
 
 cmd.extend("color_occ", color_by_occ)
