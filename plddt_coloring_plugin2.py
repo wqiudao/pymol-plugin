@@ -34,10 +34,12 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip("#")
     return [int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4)]
 
+
 CYCLE_COLORS = [
-    "#FF7E45", "#FFDB12", "#57CAF9", "#0053D7",
-    "#4CAF50", "#9B59B6", "#00BFA5", "#795548", "#d9d9d9"
+    "#0053D7", "#FFDB12", "#9B59B6", "#57CAF9",
+    "#795548", "#4CAF50", "#d9d9d9", "#00BFA5", "#FF7E45"
 ]
+
 CYCLE_COLOR_NAMES = ["occ_c{}".format(i) for i in range(9)]
 
 
@@ -130,15 +132,15 @@ def color_by_occ(selection="all"):
     Color residues by CA occupancy (q), color only, no sphere.
 
     Coloring rules (9-color cycle, (val-1) % 9):
-      q = 1,10,19,...  -> #FF7E45
+      q = 1,10,19,...  -> #0053D7
       q = 2,11,20,...  -> #FFDB12
-      q = 3,12,21,...  -> #57CAF9
-      q = 4,13,22,...  -> #0053D7
-      q = 5,14,23,...  -> #4CAF50
-      q = 6,15,24,...  -> #9B59B6
-      q = 7,16,25,...  -> #00BFA5
-      q = 8,17,26,...  -> #795548
-      q = 9,18,27,...  -> #d9d9d9
+      q = 3,12,21,...  -> #9B59B6
+      q = 4,13,22,...  -> #57CAF9
+      q = 5,14,23,...  -> #795548
+      q = 6,15,24,...  -> #4CAF50
+      q = 7,16,25,...  -> #d9d9d9
+      q = 8,17,26,...  -> #00BFA5
+      q = 9,18,27,...  -> #FF7E45
       q == 8.99        -> red (applied last, highest priority)
 
     Parameters
