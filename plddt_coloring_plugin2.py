@@ -289,8 +289,37 @@ def color_by_occ(selection="all", catalytic_residues=""):
 
 
 
+def color_occ_cmd(args=""):
+    """
+    PyMOL command entry point. Parses raw argument string.
+    Usage: color_occ [selection [, catalytic_residues]]
+    Examples:
+        color_occ
+        color_occ all
+        color_occ all, 42,105,300
+        color_occ chain A, 42,105,300
+    """
+    args = args.strip()
+    if not args:
+        color_by_occ()
+        return
 
-cmd.extend("color_occ", color_by_occ)
+    # Split on the FIRST comma that is followed by a digit (catalytic list starts)
+    # to avoid splitting "chain A" or object names that contain commas.
+    import re
+    m = re.search(r',\s*(\d)', args)
+    if m:
+        selection         = args[:m.start()].strip()
+        catalytic_residues = args[m.start() + 1:].strip()
+    else:
+        selection         = args
+        catalytic_residues = ""
+
+    color_by_occ(selection, catalytic_residues)
+
+
+cmd.extend("color_occ", color_occ_cmd)
+cmd.extend("color_occ1", color_by_occ)
 
 
 # ============================================================
