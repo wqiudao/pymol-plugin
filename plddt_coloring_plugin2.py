@@ -202,7 +202,7 @@ def color_by_occ0(selection="all"):
 
 
         
-def color_by_occ(selection="all", catalytic_residues=""):
+def color_by_occ(catalytic_residues="",selection="all"):
     """
     Color residues by CA occupancy (q), color only, no sphere.
     Optionally mark catalytic residues with red spheres.
@@ -287,7 +287,34 @@ def color_by_occ(selection="all", catalytic_residues=""):
         )
     )
 
-cmd.extend("color_occ", color_by_occ)
+
+
+
+
+
+
+def _color_occ_cmd(*args, **kwargs):
+    """
+    PyMOL command wrapper for color_occ.
+
+    PyMOL splits on commas, so residue lists like "10,20,30-40" arrive as
+    multiple positional arguments.  This wrapper re-joins them before
+    forwarding to color_by_occ().
+
+    Usage:
+        color_occ                          # color all
+        color_occ  1-50               # residues 1-50 only
+        color_occ  10,20,30-40   # chain A, specific positions
+    """
+    residues = ",".join(str(a).strip() for a in args) if args else ""
+    return color_by_occ(residues)
+    
+cmd.extend("color_occ", _color_occ_cmd)
+
+
+
+
+# cmd.extend("color_occ", color_by_occ)
  
 
 # ============================================================
