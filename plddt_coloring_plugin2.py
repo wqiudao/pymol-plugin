@@ -219,10 +219,11 @@ def color_by_occ(catalytic_residues="",selection="all"):
 
     old_sels = ["occ_special_ca", "catalytic"] + ["occ_cycle_{}_ca".format(i) for i in range(9)]
     for s in old_sels:
-        try:
-            cmd.delete(s)
-        except Exception:
-            pass
+        cmd.select(s, "none")
+        #try:
+         #   cmd.delete(s)
+        #except Exception:
+         #   pass
 
     # Register colors
     cmd.set_color("occ_red", [0.95, 0.05, 0.05])
